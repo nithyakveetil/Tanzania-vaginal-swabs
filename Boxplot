@@ -1,0 +1,34 @@
+cpm_counts <- x
+# Log-transform the CPM values
+cpm_counts <- log10(cpm_counts)
+
+# Replace the path below with your metadata file
+metadata <- y
+
+# Convert CPM matrix to long format
+cpm_long <- cpm_counts %>%
+  rownames_to_column(var = "Gene") %>%
+  pivot_longer(cols = -Gene, names_to = "Sample", values_to = "logCPM")
+
+# Merge metadata
+cpm_long <- merge(cpm_long, metadata, by = "Sample", all.x = TRUE)
+
+# Create boxplot
+boxplot_plot <- ggplot(cpm_long, aes(x = Group, y = logCPM, fill = Group)) +
+  geom_boxplot(outlier.shape = NA, alpha = 0.7) +
+  geom_jitter(width = 0.2, size = 1, alpha = 0.8, color = "black") +
+  facet_wrap(~Gene, scales = "fixed") +
+  labs(title = "Gene Expression (log10 CPM)", x = "Group", y = "log10 CPM") +
+  theme_minimal() +
+  scale_fill_manual(values = c("Low" = "#00BFC4", "High" = "#FA8072")) +
+  theme(
+    strip.text = element_text(size = 12, face = "bold"),
+    strip.placement = "outside",
+    panel.background = element_rect(fill = "white", color = "black"),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.text.x = element_text(size = 10, face = "bold"),
+    axis.text.y = element_text(size = 10),
+    axis.ticks.length = unit(0.2, "cm")
+  )
+
