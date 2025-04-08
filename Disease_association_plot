@@ -1,14 +1,3 @@
-library(DOSE)              
-library(enrichR)           
-library(igraph)           
-library(ggraph)            
-library(clusterProfiler)   
-library(org.Hs.eg.db)     
-library(dplyr)            
-
-#load data
-deg_data <- read.table("data.txt", header = TRUE, sep = "\t", stringsAsFactors = FALSE)
-
 # Filter significant genes (e.g., padj < 0.05)
 sig_genes <- deg_data$Gene[deg_data$padj < 0.05]  # Adjust column names as needed
 
