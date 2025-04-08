@@ -1,12 +1,8 @@
-# Required packages
+
 library(DESeq2)
 library(ggplot2)
 library(ggrepel)
 library(dplyr)
-
-# Inputs:
-# m: metadata table with a 'Group' column (Low/High or your desired comparison)
-# x: raw count matrix (genes/features as rows, samples as columns)
 
 # Reorder to match metadata
 x <- x[, rownames(m)]
