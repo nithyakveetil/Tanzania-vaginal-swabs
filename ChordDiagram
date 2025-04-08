@@ -1,0 +1,41 @@
+data <- x
+features <- data[, -ncol(data)] 
+ group <- data$Group
+
+  #Prevalence filter
+  prevalence <- colSums(features > 0) / nrow(features)
+  filtered_features <- features[, prevalence >= 0.2]
+  
+  # Step 4: Compute Spearman correlations
+  cor_matrix <- cor(filtered_features, method = "spearman")
+  
+  # Convert to long format
+  cor_pairs <- melt(cor_matrix, na.rm = TRUE)
+  colnames(cor_pairs) <- c("Feature1", "Feature2", "Correlation")
+  
+  # Filter correlations by threshold and remove self-correlations
+  cor_threshold <- 0.1
+  cor_pairs <- cor_pairs %>%
+    filter(abs(Correlation) >= cor_threshold, Feature1 != Feature2)
+  
+  # Top positive and negative correlations
+  top_10_positive <- head(cor_pairs[order(-cor_pairs$Correlation), ], 10)
+  top_10_negative <- head(cor_pairs[order(cor_pairs$Correlation), ], 10)
+  
+  # Combine the top positive and negative correlations
+  top_cor_pairs <- bind_rows(top_10_positive, top_10_negative)
+  
+  # Step 6: Define grid colors for the selected features
+  unique_features <- unique(c(top_cor_pairs$Feature1, top_cor_pairs$Feature2))
+  grid_colors <- setNames(rainbow(length(unique_features)), unique_features)
+  
+  # Define color mapping for the correlation legend
+  colormap <- colorRamp2(c(-1, 0, 1), c("blue", "white", "red"))
+  
+  # Draw the chord diagram
+  chordDiagram(
+    top_cor_pairs,
+    annotationTrack = c("grid", "name"),
+    col = colormap(top_cor_pairs$Correlation),  # Use colormap for correlation colors
+    grid.col = grid_colors
+  )
