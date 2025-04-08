@@ -1,0 +1,75 @@
+library(DOSE)              
+library(enrichR)           
+library(igraph)           
+library(ggraph)            
+library(clusterProfiler)   
+library(org.Hs.eg.db)     
+library(dplyr)            
+
+#load data
+deg_data <- read.table("data.txt", header = TRUE, sep = "\t", stringsAsFactors = FALSE)
+
+# Filter significant genes (e.g., padj < 0.05)
+sig_genes <- deg_data$Gene[deg_data$padj < 0.05]  # Adjust column names as needed
+
+# Convert Gene Symbols to ENTREZ IDs (change database for different species)
+entrez_ids <- bitr(sig_genes, fromType="SYMBOL", toType="ENTREZID", OrgDb="org.Hs.eg.db")  
+
+# Perform enrichment analysis using Jensen DISEASES (or other databases)
+dbs <- listEnrichrDbs()  # Check available databases
+
+# Perform enrichment analysis using Jensen DISEASES if available
+if ("Jensen_DISEASES" %in% dbs$libraryName) {
+  enrich_result_jensen <- enrichr(sig_genes, "Jensen_DISEASES")
+  
+  # Extract the first enrichment result
+  enrich_result_jensen_df <- enrich_result_jensen[[1]]
+  
+  # Sort by q-score and select top results
+  enrich_result_jensen_df$qscore <- -log10(enrich_result_jensen_df$Adjusted.P.value)
+  top_enrichments <- enrich_result_jensen_df %>%
+    arrange(desc(qscore)) %>%
+    head(20)  # Adjust the number based on your preference
+  
+  # Print the top enrichment results
+  print(top_enrichments)
+}
+
+# Create a network where each disease (Term) is a node
+disease_terms <- top_enrichments$Term
+
+# Dummy similarity matrix for network edges (replace with actual data if available)
+set.seed(123)  # For reproducibility
+similarity_matrix <- matrix(runif(400, 0, 1), nrow = 20, ncol = 20)  # Adjust size if needed
+rownames(similarity_matrix) <- disease_terms
+colnames(similarity_matrix) <- disease_terms
+
+# Set a threshold for edge creation based on similarity score
+threshold <- 0.8
+edge_list <- which(similarity_matrix >= threshold, arr.ind = TRUE)
+
+# Create edges dataframe for network construction
+edges <- data.frame(from = disease_terms[edge_list[, 1]],
+                    to = disease_terms[edge_list[, 2]],
+                    weight = similarity_matrix[edge_list])
+
+# Create the graph using the edges data
+network_graph <- graph_from_data_frame(edges, directed = FALSE)
+
+# Define node properties based on qscore
+V(network_graph)$qscore <- top_enrichments$qscore
+
+# Visualize the network
+ggraph(network_graph, layout = "fr") +  # Layout can be adjusted
+  geom_edge_link(aes(edge_alpha = weight, width = weight), color = "gray60") +  # Adjust edge thickness based on weight
+  geom_node_point(aes(color = qscore), size = 12) +  # Node color based on qscore
+  geom_node_text(aes(label = name), repel = TRUE, size = 5) +  # Add labels to nodes
+  scale_color_gradient(low = "lightgreen", high = "forestgreen") +  # Color gradient for node colors
+  scale_edge_width(range = c(0.5, 1)) +  # Adjust edge thickness
+  theme_void() +  # Clean plot theme
+  ggtitle("Top Jensen Disease Enrichment Network") +  # Plot title
+  theme(
+    plot.title = element_text(hjust = 0.5),  # Center the title
+    legend.position = "bottom"  # Position the legend at the bottom
+  )
+  
