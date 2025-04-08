@@ -1,0 +1,43 @@
+count_data_filtered <- count_data_clean[prevalence >= 0.2, ]
+count_data_filtered[] <- lapply(count_data_filtered, as.numeric)
+rownames(count_data_filtered) <- rownames(count_data)
+metadata <- metadata %>% mutate(Group = str_trim(Group))
+
+# Create SIAMCAT label object
+label <- create.label(meta = metadata, label = 'Group', case = 'Sh+ve')
+
+# Create SIAMCAT object
+sc.obj <- siamcat(feat = count_data_filtered,
+                  label = label,
+                  meta = metadata)
+
+#  Feature filtering
+sc.obj <- filter.features(sc.obj, filter.method = 'variance', cutoff = 1e-5)
+
+#  Association testing
+sc.obj <- check.associations(sc.obj, log.n0 = 1e-6, alpha = 0.2)
+
+# Visualize associations
+association.plot(sc.obj, sort.by = 'fc', 
+                 panels = c('fc', 'prevalence', 'auroc'))
+
+#  Normalize features
+sc.obj <- normalize.features(sc.obj, norm.method = "pass")
+
+#  Create data splits for cross-validation
+sc.obj <- create.data.split(sc.obj, num.folds = 10, num.resample = 2)
+
+#  Train model
+sc.obj <- train.model(sc.obj, method = 'lasso')
+
+# Make predictions
+sc.obj <- make.predictions(sc.obj)
+pred_matrix <- pred_matrix(sc.obj)
+head(pred_matrix)
+
+# Evaluate predictions
+sc.obj <- evaluate.predictions(sc.obj)
+model.evaluation.plot(sc.obj)
+
+#  Interpret the model
+model.interpretation.plot(sc.obj)
