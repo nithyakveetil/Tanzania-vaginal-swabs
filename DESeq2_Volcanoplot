@@ -1,0 +1,54 @@
+# Required packages
+library(DESeq2)
+library(ggplot2)
+library(ggrepel)
+library(dplyr)
+
+# Inputs:
+# m: metadata table with a 'Group' column (Low/High or your desired comparison)
+# x: raw count matrix (genes/features as rows, samples as columns)
+
+# Reorder to match metadata
+x <- x[, rownames(m)]
+
+# Preprocessing: Add pseudo-count
+x <- x + 1
+
+# Filter: keep features present in at least 20% of samples
+min_samples <- ceiling(0.2 * ncol(x))
+x_filt <- x[rowSums(x > 1) >= min_samples, ]
+
+# Ensure Group is a factor with reference level
+m$Group <- relevel(factor(m$Group), ref = "Low")
+
+# DESeq2 analysis
+dds <- DESeqDataSetFromMatrix(countData = x_filt, colData = m, design = ~ Group)
+dds <- DESeq(dds)
+res <- results(dds)
+
+# Extract results
+res_df <- as.data.frame(res)
+res_df$Regulation <- "Not Significant"
+res_df$Regulation[res_df$log2FoldChange > 1 & res_df$padj <= 0.05] <- "Upregulated"
+res_df$Regulation[res_df$log2FoldChange < -1 & res_df$padj <= 0.05] <- "Downregulated"
+
+# Plot PCA
+vst <- varianceStabilizingTransformation(dds, blind = TRUE)
+pca_plot <- plotPCA(vst, intgroup = "Group")
+print(pca_plot)
+
+# Volcano plot
+labeled <- res_df %>% filter(Regulation != "Not Significant")
+
+pdf("volcano_plot.pdf", width = 5, height = 5)
+ggplot(res_df, aes(x = log2FoldChange, y = -log10(pvalue), color = Regulation)) +
+  geom_point(alpha = 0.8, size = 2.5) +
+  geom_text_repel(data = labeled, aes(label = rownames(labeled)),
+                  max.overlaps = 20, size = 3.5, fontface = "bold", box.padding = 0.4) +
+  scale_color_manual(values = c("Upregulated" = "#FF5733", "Downregulated" = "#3498DB", "Not Significant" = "grey")) +
+  theme_minimal(base_size = 10) +
+  labs(title = "Volcano Plot", x = "Log2 Fold Change", y = "-Log10 P-value")
+dev.off()
+
+# Save results
+write.table(res_df, "deseq2_results.txt", sep = "\t", quote = FALSE)
