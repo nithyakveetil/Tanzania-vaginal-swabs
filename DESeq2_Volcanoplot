@@ -4,9 +4,6 @@ library(ggplot2)
 library(ggrepel)
 library(dplyr)
 
-# Reorder to match metadata
-x <- x[, rownames(m)]
-
 # Preprocessing: Add pseudo-count
 x <- x + 1
 
