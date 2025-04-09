@@ -1,0 +1,1 @@
+This repository contains R scripts and resources used for the integrative analysis of human mucosal RNA-seq and viral metagenomic data, including differential gene expression, disease enrichment, machine learning-based classification, and visualization.
